@@ -33,7 +33,6 @@ respTrace2.close()
 del traceMark1, traceMark2
 
 # get data
-global dane
 getData = urllib2.Request(url[2])
 getData.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0')
 response = urllib2.urlopen(getData)
