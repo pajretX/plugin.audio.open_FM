@@ -32,7 +32,7 @@ class Main:
 		for kanal in json_data['channels'] :
 			if kanal['group_id'] == ID_kat :
 				# print kanal['logo']['url']
-				li  = xbmcgui.ListItem(kanal['name'], iconImage='DefaultMusicSongs.png', thumbnailImage=kanal['logo']['url'])
+				li  = xbmcgui.ListItem(kanal['name'], iconImage='DefaultMusicSongs.png', thumbnailImage=kanal['logo']['url'].replace('71x71','500x500'))
 				url = 'http://stream.open.fm/%s' % ( kanal['id'] )
 				xbmcplugin.addDirectoryItem(int(sys.argv[1]), url, li, isFolder=False)
 
