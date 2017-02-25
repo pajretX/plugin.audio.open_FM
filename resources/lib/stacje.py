@@ -13,24 +13,31 @@ import urllib,urllib2
 import xbmcaddon
 import json
 
-# static
-stream = 'http://stream.open.fm/'
+#
+__id__       = 'plugin.audio.open_FM';
+__settings__ = xbmcaddon.Addon(id=__id__)
+__datapath__ = xbmc.translatePath('special://profile/addon_data/%s' % (__id__))
 
-__settings__ = xbmcaddon.Addon(id='plugin.audio.open_FM')
-TMP_LOC = xbmc.translatePath( os.path.join( __settings__.getAddonInfo('path'), 'resources', 'tmp','temp_data' ) )
-json_data=open(TMP_LOC).read()
-#w = unicode(json_data, "utf-8")
-#w.encode( "utf-8" )
-dane = json.loads(json_data)
-print dane
+# 
+cached_json   = os.path.join(__datapath__, 'stations.json')
+with open(cached_json, 'r') as data_file:    
+	json_data = json.load(data_file)
+# print json_data
+
 
 class Main: 
 	def __init__( self ) :
+		# Stations (for category)...
 		ID_kat = sys.argv[2].split('=')[1]
-		for kanal in dane['channels']:
-			if kanal['group_id'] == ID_kat:
-				li = xbmcgui.ListItem(kanal['name'], thumbnailImage=kanal['logo']['url'])
-				xbmcplugin.addDirectoryItem(int(sys.argv[1]), stream+kanal['id'], li, isFolder=False)
-				
-			xbmcplugin.addSortMethod(handle=int(sys.argv[1]), sortMethod=xbmcplugin.SORT_METHOD_NONE)
-			xbmcplugin.endOfDirectory(handle=int(sys.argv[1]), succeeded=True)				
+		for kanal in json_data['channels'] :
+			if kanal['group_id'] == ID_kat :
+				# print kanal['logo']['url']
+				li  = xbmcgui.ListItem(kanal['name'], iconImage='DefaultMusicSongs.png', thumbnailImage=kanal['logo']['url'])
+				url = 'http://stream.open.fm/%s' % ( kanal['id'] )
+				xbmcplugin.addDirectoryItem(int(sys.argv[1]), url, li, isFolder=False)
+
+        # Disable sorting...
+		xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_NONE )
+		
+        # End of list...
+		xbmcplugin.endOfDirectory( handle=int( sys.argv[ 1 ] ), succeeded=True )	
