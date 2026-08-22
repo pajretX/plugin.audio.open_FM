@@ -1,15 +1,22 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addon id="plugin.audio.open_FM"
        name="Open FM"
-       version="2.0.1"
+       version="3.0.1"
        provider-name="pajretX">
-  <extension point="xbmc.python.pluginsource"
-            library="default.py">
-        <provides>audio</provides>
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="default.py">
+    <provides>audio</provides>
   </extension>
   <extension point="xbmc.addon.metadata">
-    <summary>Otwórz się na muzykę z OPEN.FM</summary>
-    <description>Stream radia ze strony open.fm</description>
+    <summary lang="pl_PL">Otwórz się na muzykę z OPEN.FM</summary>
+    <description lang="pl_PL">Stream radia ze strony open.fm (Kodi 19+ / Python 3)</description>
     <platform>all</platform>
+    <license>MIT</license>
+    <source>https://github.com/pajretX/plugin.audio.open_FM</source>
+    <assets>
+      <icon>icon.png</icon>
+    </assets>
   </extension>
 </addon>

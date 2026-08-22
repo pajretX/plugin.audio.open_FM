@@ -1,39 +1,31 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Lista kategorii (Open FM) — Kodi 19+, Python 3
 
-#
-# Imports
-#
-import os
 import sys
+import urllib.parse
+
 import xbmc
+import xbmcaddon
 import xbmcgui
 import xbmcplugin
-import xbmcaddon
-import json, urllib2
 
-__id__       = 'plugin.audio.open_FM';
-__settings__ = xbmcaddon.Addon(id=__id__)
-__datapath__ = xbmc.translatePath('special://profile/addon_data/%s' % (__id__))
+import default as ofm  # wspólne funkcje (cache, pobieranie)
 
-cached_json   = os.path.join(__datapath__, 'stations.json')
-with open(cached_json, 'r') as data_file:    
-	json_data = json.load(data_file)
-# print json_data
+__id__ = 'plugin.audio.open_FM'
 
-#
-# Main class
-#
+json_data_stations = ofm.get_stations()
+categories = ofm.get_categories_from_page()
+
+
 class Main:
-	def __init__(self):
-        # Categories...
-		for kategoria in json_data['groups']:
-			li  = xbmcgui.ListItem( kategoria['name'])
-			url = '%s?stacje=%s' % (sys.argv[0], kategoria['id'])
-			xbmcplugin.addDirectoryItem(int(sys.argv[1]), url, li, True)
+    def __init__(self):
+        handle = int(sys.argv[1])
+        for kat in categories:
+            li = xbmcgui.ListItem(label=kat['name'])
+            li.setArt({'thumb': '', 'icon': 'DefaultFolder.png'})
+            url = '%s?stacje=%s' % (sys.argv[0], urllib.parse.quote(str(kat['id'])))
+            xbmcplugin.addDirectoryItem(handle, url, li, isFolder=True)
 
-        # Disable sorting...
-		xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_NONE )
-		
-        # End of list...
-		xbmcplugin.endOfDirectory( handle=int( sys.argv[ 1 ] ), succeeded=True )
+        xbmcplugin.addSortMethod(handle, xbmcplugin.SORT_METHOD_LABEL)
+        xbmcplugin.endOfDirectory(handle, succeeded=True)

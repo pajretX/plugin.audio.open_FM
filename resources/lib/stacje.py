@@ -1,43 +1,40 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Lista stacji w kategorii (Open FM) — Kodi 19+, Python 3
 
-#
-# Imports
-#
-import os 
-import sys 
-import xbmc 
-import xbmcgui 
-import xbmcplugin 
-import urllib,urllib2 
+import sys
+import urllib.parse
+
 import xbmcaddon
-import json
+import xbmcgui
+import xbmcplugin
 
-#
-__id__       = 'plugin.audio.open_FM';
-__settings__ = xbmcaddon.Addon(id=__id__)
-__datapath__ = xbmc.translatePath('special://profile/addon_data/%s' % (__id__))
+import default as ofm
 
-# 
-cached_json   = os.path.join(__datapath__, 'stations.json')
-with open(cached_json, 'r') as data_file:    
-	json_data = json.load(data_file)
-# print json_data
+__id__ = 'plugin.audio.open_FM'
+
+stations_by_id = ofm.get_stations()
+categories = {str(c['id']): c for c in ofm.get_categories_from_page()}
 
 
-class Main: 
-	def __init__( self ) :
-		# Stations (for category)...
-		ID_kat = sys.argv[2].split('=')[1]
-		for kanal in json_data['channels'] :
-			if kanal['group_id'] == ID_kat :
-				# print kanal['logo']['url']
-				li  = xbmcgui.ListItem(kanal['name'], iconImage='DefaultMusicSongs.png', thumbnailImage=kanal['logo']['url'].replace('71x71','500x500'))
-				url = 'http://stream.open.fm/%s' % ( kanal['id'] )
-				xbmcplugin.addDirectoryItem(int(sys.argv[1]), url, li, isFolder=False)
+class Main:
+    def __init__(self):
+        handle = int(sys.argv[1])
+        kat_id = urllib.parse.unquote(sys.argv[2].split('stacje=')[1].split('&')[0])
+        kat = categories.get(kat_id)
+        items = []
+        if kat:
+            for sid in kat['stations']:
+                st = stations_by_id.get(str(sid))
+                if not st:
+                    continue
+                items.append(st)
 
-        # Disable sorting...
-		xbmcplugin.addSortMethod( handle=int( sys.argv[ 1 ] ), sortMethod=xbmcplugin.SORT_METHOD_NONE )
-		
-        # End of list...
-		xbmcplugin.endOfDirectory( handle=int( sys.argv[ 1 ] ), succeeded=True )	
+        for st in items:
+            li = xbmcgui.ListItem(label=st['name'])
+            li.setArt({'thumb': st.get('logoUrl', ''), 'icon': 'DefaultMusicSongs.png'})
+            url = '%s?play=%s' % (sys.argv[0], str(st['id']))
+            xbmcplugin.addDirectoryItem(handle, url, li, isFolder=False)
+
+        xbmcplugin.addSortMethod(handle, xbmcplugin.SORT_METHOD_LABEL)
+        xbmcplugin.endOfDirectory(handle, succeeded=True)
