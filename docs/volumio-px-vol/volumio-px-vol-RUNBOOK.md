@@ -170,12 +170,45 @@ Kluczowe wartości:
 ### peppymeterbasic — `/data/configuration/user_interface/peppymeterbasic/config.json`
 - `meter: bar`, `screensize: 800x480`, `metersize: 30`, `autosize: true`, `delaymeter: 20`
 
-### openfm — edycje kodu (kasowane przez Plugin Update!)
-`/data/plugins/music_service/openfm/index.js` ma rozszerzenia ponad `.bak`:
-- stałe `API_STANDALONE`, `API_CATEGORIES`, `API_CATEGORY_PREFIX`
-- cache kategorii (`_categoryStationsCache`, `_categoryStationsCacheTime`)
-- równoległe pobieranie stacji + standalone przez `libQ.all`
-- **To jest kod Twojego pluginu open_FM** — źródło prawdy jest w repo GitHub `pajretX/plugin.audio.open_FM`, nie na urządzeniu. Po aktualizacji: sklonuj repo, popraw, `volumio plugin install`.
+### openfm — wersja Volumio (JS). NIE mylić z Kodi (Python)!
+
+**To są DWIE OSOBNE IMPLEMENTACJE tego samego serwisu open.fm. Nie mieszaj ich nigdy.**
+
+| | Volumio (px-vol) | Kodi (laptop) |
+|---|---|---|
+| język | JavaScript | Python 3 |
+| plik | `index.js` | `default.py` + `resources/lib/*.py` |
+| lokalizacja | `/data/plugins/music_service/openfm/` | Kodi addon `plugin.audio.open_FM` |
+| wersja | 1.0.4 | 3.1.0 |
+| repo | `pajretX/volumio-plugins-sources-bookworm` | `pajretX/plugin.audio.open_FM` |
+| gałąź | **`openfm-submit`** | `master` |
+| katalog | `openfm/` | katalog główny repo |
+
+**Odtworzenie wersji Volumio po aktualizacji pluginu:**
+```bash
+git clone --depth 1 --branch openfm-submit \
+  git@github.com:pajretX/volumio-plugins-sources-bookworm.git
+# plugin jest w katalogu openfm/
+```
+
+**Porównanie wersji (lokalna vs GitHub) — ZAWSZE przez normalizację CRLF:**
+
+Volumio serwuje pliki z `\r\n`, GitHub trzyma `\n`. Surowy rozmiar różni się o liczbę linii (885 B dla 885 linii) i **nie oznacza zmiany treści**. Porównuj tak:
+```bash
+tr -d '\r' < index.js | md5sum
+# oczekiwane dla 1.0.4: 7050947058070c827ec737e4d151ed3b
+```
+Nigdy nie wnioskuj o rozjeździe wersji z samej różnicy rozmiaru pliku.
+
+**Naprawy zawarte w wersji Volumio 1.0.4** (ponad stan bez tych zmian):
+- stacje **standalone** (`API_STANDALONE`, równolegle przez `libQ.all`, `.fail()` → `'[]'`)
+- **pełne listy stacji w kategoriach** (`getCategoryStations(slug)` → `/api/radio/category/<slug>` + cache TTL) — wcześniej kategoria pokazywała ~5 stacji
+- **kategorie z API** (`/api/radio/categories`), scraping HTML `__NEXT_DATA__` **zachowany jako fallback**
+- **Premium**: dopisek `[Premium]`, gwiazdka `fa fa-star`, **odrzucenie odtwarzania z toastem** (PL/EN)
+- metadata reader `timed_id3` **tylko dla `.m3u8`** — dla AAC standalone nie odpala (oszczędza CPU)
+- guard w `getStreamUrl` — URL spoza `stream-cdn-1.open.fm` i bez `.m3u8` zwracany bez tokenowania
+
+**Uwaga o parzystości z Kodi:** `default.py` (Kodi 3.1.0) ma standalone i pełne kategorie z API, ale Premium tylko jako dopisek `[Premium]` do nazwy — **bez odrzucania odtwarzania i bez ikony gwiazdki**. To jedyna znana asymetria między implementacjami. Nie opisuj wersji Kodi jako „nieobsługującej Premium" — ona oznacza Premium tekstowo.
 
 ---
 
@@ -191,7 +224,73 @@ Kluczowe wartości:
 
 ---
 
-## 8. Kopia zapasowa
+## 8. Zasady ustalania faktów (obowiązkowe przed każdym twierdzeniem)
+
+Ta sekcja istnieje, bo 21.11.2026 wprowadziłem użytkownika w błąd **trzy razy w jednej rozmowie**, opierając się na niepełnym rozpoznaniu. Każdy błąd byłby uniknięty jednym zapytaniem. Zasady są twarde, nie są sugestiami.
+
+### 8.1. Zanim twierdzisz, że czegoś nie ma — sprawdź WSZYSTKIE gałęzie i wszystkie repo
+
+```bash
+# 1) wszystkie repo uzytkownika
+curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
+  "https://api.github.com/user/repos?per_page=100" | jq -r '.[].name'
+
+# 2) WSZYSTKIE galezie danego repo (nie tylko master!)
+curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
+  "https://api.github.com/repos/<user>/<repo>/branches?per_page=100" | jq -r '.[].name'
+
+# 3) plik na konkretnej galezi
+curl -sS -H "Authorization: Bearer $GITHUB_TOKEN" \
+  "https://api.github.com/repos/<user>/<repo>/contents/<katalog>?ref=<galeza>"
+```
+
+**Rzeczywisty błąd, którego to dotyczy:** twierdziłem, że repo `plugin.audio.open_FM` nie zawiera wersji Volumio — sprawdziłem tylko `master`. Wersja JS leżała na **gałęzi `openfm-submit` w innym repo** (`volumio-plugins-sources-bookworm`). Zanim powiesz „brak" — pytaj API o gałęzie.
+
+### 8.2. Nie mieszaj implementacji różnych platform
+
+Volumio = JavaScript. Kodi = Python. To **dwa osobne projekty na tym samym API open.fm**, w dwóch osobnych repo. Rozmawiając o Volumio, patrz wyłącznie na `index.js` i `volumio-plugins-sources-bookworm`. Rozmawiając o Kodim — na `default.py` i `plugin.audio.open_FM`. Nigdy nie przenoś wniosku z jednej na drugą.
+
+### 8.3. Różnica rozmiaru pliku to NIE różnica treści (CRLF)
+
+Volumio serwuje `\r\n`, GitHub trzyma `\n`. Różnica = liczba linii w bajtach. Zawsze normalizuj przed porównaniem:
+```bash
+tr -d '\r' < plik | md5sum
+```
+Nie ogłaszaj „wersje się rozjechały", dopóki md5 po normalizacji się nie różni.
+
+### 8.4. Każdy wynik `grep` weryfikuj osobno — nie ufaj złożonym pipeline'om
+
+Mój `grep -ci premium` zwrócił `0` przy **faktycznym trafieniu** w linii 46, bo poprzednia gałąź polecenia wypisała `0` i wziąłem to za wynik. Potem ogłosiłem „Kodi nie obsługuje Premium" — nieprawda.
+```bash
+# ZLE: wynik moze pochodzic z innej galezi niz myslisz
+for p in a b; do grep -ci "$p" plik || echo 0; done
+
+# DOBRZE: osobne polecenie, widoczny kontekst
+grep -n "premium" plik; echo "exit=$?"
+```
+Przy wyniku `0` **zawsze** potwierdź niezależnym poleceniem (`grep -n`), że naprawdę nie ma trafień.
+
+### 8.5. Rozróżniaj „naprawiłem błąd" od „dodałem funkcję"
+
+Przed opisaniem własnej zmiany jako „poprawki" — przeczytaj diff i powiedz, czy usuwała usterkę, czy dodawała możliwość. 21.11 nazwałem 135 linii dodanych kodu „poprawkami openfm", sugerując że coś było zepsute. Nie było — to była rozbudowa funkcjonalna. Użytkownik ma prawo wiedzieć, co dokładnie zmieniono i dlaczego.
+
+### 8.6. Gdy użytkownik mówi „to już istnieje" — ma prawie zawsze rację
+
+Jeśli user zaprzecza faktowi, który podałem, **najpierw szukam dowodów przeciw sobie**, nie bronię tezy. Dwukrotnie w tej rozmowie user miał rację („przecież tam było logo", „mamy już repo dla volumio i openfm"), a ja się myliłem.
+
+### 8.7. Zanim zaproponuję „nowe rozwiązanie" — sprawdź, czy nie istnieje
+
+Proponowałem „osobne repo dla index.js" oraz „wrzucić index.js do repo". Oba były zbędne — plugin był na GitHubie od 17.11. Zanim zaproponujesz pracę, sprawdź stan faktyczny. Propozycja czegoś, co jest już wykonane, kosztuje zaufanie i czas.
+
+### 8.8. Weryfikuj stan faktyczny przed raportem, nie po
+
+Każde twierdzenie o stanie systemu musi być poparte poleceniem wykonanym **w tej samej sesji**. Nie polegaj na notatkach, skillach ani pamięci — one opisują stan z przeszłości. Przykład: `wc -c` pokazał różnicę 885 B i prawie ogłosiłem rozjazd wersji; jedno `md5sum` po normalizacji to rozstrzygnęło.
+
+**Test prosty:** czy umiem wskazać polecenie z tej sesji, które potwierdza to zdanie? Jeśli nie — nie piszę tego zdania.
+
+---
+
+## 9. Kopia zapasowa
 
 `/mnt/cache/backups/vmail` — **NIE DOTYKAĆ** (backup poczty krawczyk.ninja).
 
